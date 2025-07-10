@@ -1,5 +1,12 @@
 [
     {
+        "id": "124a124ed5371393",
+        "type": "tab",
+        "label": "Dashboard",
+        "disabled": false,
+        "info": ""
+    },
+    {
         "id": "aa7b93fe306bf328",
         "type": "ui_gauge",
         "z": "124a124ed5371393",
@@ -28,11 +35,244 @@
         "wires": []
     },
     {
+        "id": "b1401ad5ac2ac853",
+        "type": "function",
+        "z": "124a124ed5371393",
+        "name": "indicação com incerteza",
+        "func": "// Valor da incerteza (pode ser ajustado)\nconst inc = 0.5;\n\n// Converte o valor atual recebido\nconst valor = Number(msg.payload);\nif (isNaN(valor)) return null;\n\n// Timestamp atual em formato ISO\nconst ts = new Date().toISOString();\n\n// Cria 3 mensagens com tópicos distintos\nlet medida = {\n    topic: \"Valor Medido\",\n    payload: valor,\n    timestamp: ts\n};\n\nlet medidaMais = {\n    topic: \"Limite Superior (±0.5 cm)\",\n    payload: valor + inc,\n    timestamp: ts\n};\n\nlet medidaMenos = {\n    topic: \"Limite Inferior (±0.5 cm)\",\n    payload: valor - inc,\n    timestamp: ts\n};\n\n// Envia as três curvas para o gráfico\nreturn [medida, medidaMais, medidaMenos];",
+        "outputs": 3,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 140,
+        "wires": [
+            [
+                "5d248eb75eda0f98"
+            ],
+            [
+                "5d248eb75eda0f98"
+            ],
+            [
+                "5d248eb75eda0f98"
+            ]
+        ]
+    },
+    {
+        "id": "5d248eb75eda0f98",
+        "type": "ui_chart",
+        "z": "124a124ed5371393",
+        "name": "",
+        "group": "31192c83.4b89c4",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "label": "Histórico da Indicação",
+        "chartType": "line",
+        "legend": "true",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": "30",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "1",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#ff7f0e",
+            "#777777",
+            "#777777",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 740,
+        "y": 140,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "c4866ce0542e0cb7",
+        "type": "debug",
+        "z": "124a124ed5371393",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 360,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "ca0520b07cf4c11b",
+        "type": "mqtt in",
+        "z": "124a124ed5371393",
+        "name": "",
+        "topic": "sensor/distancia",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "43bb1110dcb119d9",
+        "nl": false,
+        "rap": false,
+        "inputs": 0,
+        "x": 140,
+        "y": 180,
+        "wires": [
+            [
+                "b1401ad5ac2ac853",
+                "aa7b93fe306bf328",
+                "c4866ce0542e0cb7",
+                "4298b6229e714ef8"
+            ]
+        ]
+    },
+    {
+        "id": "4298b6229e714ef8",
+        "type": "function",
+        "z": "124a124ed5371393",
+        "name": "Intervalo de confiança da média",
+        "func": "const windowSize = 50;\nlet values = context.get('values') || [];\n\nconst newValue = Number(msg.payload);\nif (isNaN(newValue)) return null;\n\nvalues.push(newValue);\nif (values.length > windowSize) values.shift();\ncontext.set('values', values);\n\nconst n = values.length;\nconst mean = values.reduce((a, b) => a + b, 0) / n;\nconst stdDev = Math.sqrt(values.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / n);\nconst marginError = 1.96 * (stdDev / Math.sqrt(n));\n\nconst lower = mean - marginError;\nconst upper = mean + marginError;\n\n// Timestamp para o eixo X\nconst ts = new Date().toISOString();\n\n// Envia 3 séries com tópicos diferentes\nreturn [\n    { topic: \"Média (Últimas 50 medidas)\", payload: mean, timestamp: ts },\n    { topic: \"IC 95% Superior\", payload: upper, timestamp: ts },\n    { topic: \"IC 95% Inferior\", payload: lower, timestamp: ts }\n];\n",
+        "outputs": 3,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 220,
+        "wires": [
+            [
+                "5780a2c763237123"
+            ],
+            [
+                "5780a2c763237123"
+            ],
+            [
+                "5780a2c763237123"
+            ]
+        ]
+    },
+    {
+        "id": "5780a2c763237123",
+        "type": "ui_chart",
+        "z": "124a124ed5371393",
+        "name": "",
+        "group": "86fbd03e9d16c0d9",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "label": "Histórico da Média Móvel",
+        "chartType": "line",
+        "legend": "true",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": "30",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "1",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#aec7e8",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 750,
+        "y": 220,
+        "wires": [
+            []
+        ]
+    },
+    {
         "id": "b510dac7.dace58",
         "type": "ui_group",
         "name": "Indicação Atual",
         "tab": "9435884d.3cab1",
         "order": 3,
+        "disp": false,
+        "width": "10",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "31192c83.4b89c4",
+        "type": "ui_group",
+        "name": "Indicação Histórica",
+        "tab": "9435884d.3cab1",
+        "order": 1,
+        "disp": false,
+        "width": "10",
+        "collapse": false,
+        "className": "<style> @media screen and (max-width: 600px) {   .nr-dashboard-template {     width: 100% !important;   } } </style>"
+    },
+    {
+        "id": "43bb1110dcb119d9",
+        "type": "mqtt-broker",
+        "name": "hivemq",
+        "broker": "broker.hivemq.com",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "86fbd03e9d16c0d9",
+        "type": "ui_group",
+        "name": "Média Histórica",
+        "tab": "9435884d.3cab1",
+        "order": 2,
         "disp": false,
         "width": "10",
         "collapse": false,
